@@ -2,7 +2,9 @@ package com.project.mydrive.core.service;
 
 import com.project.mydrive.api.v1.model.APIUser;
 import com.project.mydrive.api.v1.model.CreateUserRequest;
+import com.project.mydrive.core.domain.Directory;
 import com.project.mydrive.core.domain.User;
+import com.project.mydrive.core.repository.DirectoryRepository;
 import com.project.mydrive.core.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final DirectoryService directoryService;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
     public APIUser createUser(CreateUserRequest createUserRequest) {
@@ -34,8 +37,9 @@ public class UserService {
         user.setPassword(password);
         user.setName(createUserRequest.name().trim());
         user.setEmail(createUserRequest.email().trim());
+        User u = userRepository.save(user);
 
-        return mapToAPIUser(userRepository.save(user));
+        return mapToAPIUser(u);
     }
 
     private static APIUser mapToAPIUser(User user) {
