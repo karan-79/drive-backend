@@ -5,7 +5,16 @@ plugins {
 }
 
 group = "com.project"
-version = "0.0.1-SNAPSHOT"
+version = "0.0.1"
+
+tasks.bootJar {
+	archiveBaseName.set("drive")
+}
+
+tasks.jar {
+	archiveClassifier.set("plain")
+	enabled = false
+}
 
 java {
 	toolchain {
@@ -36,6 +45,7 @@ dependencies {
 	annotationProcessor("org.projectlombok:lombok")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
+	testImplementation("org.testcontainers:postgresql")
 	testImplementation("io.projectreactor:reactor-test")
 	testImplementation("org.testcontainers:junit-jupiter")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
