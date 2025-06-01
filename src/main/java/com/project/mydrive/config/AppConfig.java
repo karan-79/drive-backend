@@ -20,7 +20,12 @@ public class AppConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**") // Allow CORS for all paths
-                        .allowedOrigins("*") // Allowed origins
+                        .allowedOrigins(
+                                "http://localhost:3000",
+                                "https://drive-0x45.netlify.app",
+                                "https://drive-0x45.netlify.app/"
+                                ) // Allowed origins
+                        .allowedOriginPatterns("https://drive-0x45-*.netlify.app")
                         .allowedMethods("GET", "POST", "PUT", "DELETE") // Allowed HTTP methods
                         .allowedHeaders("*") // Allowed headers
                         .allowCredentials(true); // Allow credentials (cookies, etc.)
