@@ -73,7 +73,7 @@ jobs:
             --name drive-clone-app \
             -p 8081:8080 \
             --restart unless-stopped \
-            -e SPRING_DATASOURCE_URL="${{ env.SUPABASE_JDBC_URL }}" \
+            -e SPRING_DATASOURCE_URL="${{ secrets.SUPABASE_JDBC_URL }}" \
             ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
           
           # Clean up unused images
