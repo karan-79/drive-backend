@@ -5,6 +5,8 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 /local-blob
+/local-shit/*
+/local-shit
 
 ### STS ###
 .apt_generated

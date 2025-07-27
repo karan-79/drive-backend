@@ -3,6 +3,8 @@ package com.project.mydrive.core.service;
 import com.project.mydrive.api.v1.model.APIDirectory;
 import com.project.mydrive.core.domain.Directory;
 import com.project.mydrive.core.domain.User;
+import com.project.mydrive.core.exception.DirectoryNotFoundException;
+import com.project.mydrive.core.exception.UserNotFoundException;
 import com.project.mydrive.core.repository.DirectoryRepository;
 import com.project.mydrive.core.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +23,9 @@ public class DirectoryService {
 
     public APIDirectory createDir(String name, Long parentDir, UUID userId) {
 
-        User user = userRepository.findById(userId).orElseThrow();
-        var dir = parentDir == null ? getRootDirForUser(user) : directoryRepository.getDirectoryByOwnerAndId(user, parentDir).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
+        var dir = parentDir == null ? getRootDirForUser(user) : directoryRepository.getDirectoryByOwnerAndId(user, parentDir).orElseThrow(() -> new DirectoryNotFoundException("Parent directory with ID " + parentDir + " not found."));
 
         var newDir = new Directory();
         newDir.setName(name);
@@ -54,8 +57,9 @@ public class DirectoryService {
 
     public APIDirectory updateDir(Long dirId, String newDirName, Long newParentDirId, UUID userId) {
 
-        User user = userRepository.findById(userId).orElseThrow();
-        var dir = directoryRepository.getDirectoryByOwnerAndId(user, dirId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
+        var dir = directoryRepository.getDirectoryByOwnerAndId(user, dirId).orElseThrow(() -> new DirectoryNotFoundException("Directory with ID " + dirId + " not found."));
 
         if (!newDirName.equals(dir.getName())) {
             dir.setName(newDirName);
@@ -66,7 +70,7 @@ public class DirectoryService {
                 && newParentDirId != null
                 && !dir.getParentDirectory().getId().equals(newParentDirId)
         ) {
-            var newParentDir = directoryRepository.getDirectoryByOwnerAndId(user, newParentDirId).orElseThrow();
+            var newParentDir = directoryRepository.getDirectoryByOwnerAndId(user, newParentDirId).orElseThrow(() -> new DirectoryNotFoundException("New parent directory with ID " + newParentDirId + " not found."));
             dir.setParentDirectory(newParentDir);
         }
 
@@ -76,7 +80,8 @@ public class DirectoryService {
     }
 
     public List<APIDirectory> getAllDirsUnder(Long parentDir, UUID userId) {
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
         Directory dir = null;
         if (parentDir == null) {
             dir = getRootDirForUser(user);
@@ -88,7 +93,8 @@ public class DirectoryService {
     }
 
     public List<APIDirectory> getAllDirs(UUID userId) {
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
 
         return directoryRepository.findAllByOwner(user).stream().map(this::toApiDir).toList();
 

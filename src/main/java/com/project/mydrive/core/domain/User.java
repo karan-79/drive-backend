@@ -22,9 +22,13 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     UUID id;
 
-    String username;
-    String password;
-    String name;
+    @Column(name = "UID")
+    String uId;
+    @Column(name = "FIRST_NAME")
+    String firstName;
+
+    @Column(name = "LAST_NAME")
+    String lastName;
     String email;
     Long storageUsed;
     Long storageLimit;
