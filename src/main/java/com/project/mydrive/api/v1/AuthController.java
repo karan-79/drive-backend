@@ -9,7 +9,6 @@ import com.project.mydrive.core.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,12 +19,11 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/v1/auth")
 @RequiredArgsConstructor
-@AllArgsConstructor
 public class AuthController {
 
     private final UserService userService;
 
-    @Value("${http-only-cookie.https-enabled}:true")
+    @Value("${http-only-cookie.https-enabled:true}")
     private boolean httpsCookieScheme;
 
     @SneakyThrows

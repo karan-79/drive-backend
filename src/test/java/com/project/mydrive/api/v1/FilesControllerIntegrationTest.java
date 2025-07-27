@@ -6,11 +6,8 @@ import com.project.mydrive.api.v1.model.APIUser;
 import com.project.mydrive.api.v1.model.UpdateFileRequest;
 import com.project.mydrive.core.domain.Directory;
 import com.project.mydrive.core.domain.User;
-import com.project.mydrive.core.repository.DirectoryRepository;
-import com.project.mydrive.core.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -28,11 +25,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class FilesControllerIntegrationTest extends BaseIntegrationTests {
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private DirectoryRepository directoryRepository;
 
     private User testUser;
     private Directory rootDirectory;

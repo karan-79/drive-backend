@@ -1,12 +1,8 @@
 package com.project.mydrive.document;
 
 import com.project.mydrive.BaseIntegrationTests;
-import com.project.mydrive.external.document.DocumentClient;
 import com.project.mydrive.external.document.model.Document;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 
@@ -14,8 +10,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class S3DocumentClientTest extends BaseIntegrationTests {
 
-    @Autowired
-    private DocumentClient documentClient;
 
     @Test
     void shouldUploadAndDownloadDocument() {

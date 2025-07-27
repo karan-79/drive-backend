@@ -6,6 +6,9 @@ import com.google.firebase.auth.FirebaseToken;
 import com.project.mydrive.api.v1.model.APIUser;
 import com.project.mydrive.api.v1.model.FirebaseAuthRequest;
 import com.project.mydrive.config.TestConfig;
+import com.project.mydrive.core.repository.DirectoryRepository;
+import com.project.mydrive.core.repository.UserRepository;
+import com.project.mydrive.external.document.DocumentClient;
 import com.project.mydrive.utils.JwtUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +25,6 @@ import java.util.Map;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @Import(TestConfig.class)
@@ -30,6 +32,12 @@ public class BaseIntegrationTests {
 
     @Value("${local.server.port}")
     protected int port;
+
+    @Autowired
+    protected UserRepository userRepository;
+
+    @Autowired
+    protected DirectoryRepository directoryRepository;
 
     @Autowired
     protected WebTestClient webTestClient;
@@ -42,6 +50,9 @@ public class BaseIntegrationTests {
 
     @Autowired
     protected JwtUtils jwtUtils;
+
+    @Autowired
+    protected DocumentClient documentClient;
 
     @BeforeEach
     public void setup() {

@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -31,7 +30,6 @@ import static org.mockito.Mockito.mock;
 public class TestConfig {
 
     @Bean
-    @Primary
     public FirebaseAuth firebaseAuth() {
         return mock(FirebaseAuth.class);
     }
@@ -54,7 +52,7 @@ public class TestConfig {
     }
 
     @Bean
-    public S3Client s3Client(@Value("${aws.bucket-name}") String bucketName) {
+    public S3Client s3Client(@Value("${localstack.s3.bucket-name}") String bucketName) {
 
         var uri = startLocalStack();
 
@@ -93,7 +91,7 @@ public class TestConfig {
     }
 
     @Bean
-    public DocumentClient documentClient(@Value("${aws.bucket-name}") String bucketName, S3Client client) {
+    public DocumentClient documentClient(@Value("${localstack.s3.bucket-name}") String bucketName, S3Client client) {
         return new S3DocumentClient(client, bucketName);
     }
 }
