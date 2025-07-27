@@ -3,9 +3,9 @@ package com.project.mydrive.config;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.auth.FirebaseAuth;
 import com.project.mydrive.external.document.DocumentClient;
 import com.project.mydrive.external.document.S3DocumentClient;
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,18 +25,21 @@ public class AppConfig {
     @Value("${firebase.credentials.json}")
     private String credentialsJson;
 
-    @PostConstruct
-    public void init() throws IOException {
+    @Bean
+    public FirebaseAuth firebaseAuth() throws IOException {
+
         ByteArrayInputStream serviceAccount = new ByteArrayInputStream(credentialsJson.getBytes(StandardCharsets.UTF_8));
 
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                 .build();
-
-        if (FirebaseApp.getApps().isEmpty()) {
-            FirebaseApp.initializeApp(options);
-        }
+        var apps = FirebaseApp.getApps();
+        return apps.isEmpty()
+                ? FirebaseAuth.getInstance(FirebaseApp.initializeApp(options))
+                : FirebaseAuth.getInstance(apps.get(0));
     }
+
+
 
     @Bean
     public S3Client s3Client(
