@@ -51,6 +51,7 @@ jobs:
   deploy-drive-clone:
     name: Deploy Drive Clone to EC2
     runs-on: ubuntu-latest
+    needs: build-drive-clone
 
     steps:
     - name: Deploy to EC2
