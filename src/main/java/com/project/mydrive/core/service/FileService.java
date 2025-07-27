@@ -1,24 +1,33 @@
 package com.project.mydrive.core.service;
 
 import com.project.mydrive.api.v1.model.APIFile;
+import com.project.mydrive.api.v1.model.FileResource;
 import com.project.mydrive.api.v1.model.UpdateFileRequest;
 import com.project.mydrive.core.domain.Directory;
 import com.project.mydrive.core.domain.File;
 import com.project.mydrive.core.domain.FileMetadata;
 import com.project.mydrive.core.domain.User;
+import com.project.mydrive.core.exception.DirectoryNotFoundException;
+import com.project.mydrive.core.exception.EmptyFileException;
+import com.project.mydrive.core.exception.FileDownloadException;
+import com.project.mydrive.core.exception.FileNotFoundException;
+import com.project.mydrive.core.exception.FileUploadException;
+import com.project.mydrive.core.exception.UnauthorizedFileAccessException;
+import com.project.mydrive.core.exception.UserNotFoundException;
 import com.project.mydrive.core.repository.DirectoryRepository;
 import com.project.mydrive.core.repository.FileMetadataRepository;
 import com.project.mydrive.core.repository.FileRepository;
 import com.project.mydrive.core.repository.UserRepository;
+
+import com.project.mydrive.external.document.DocumentClient;
+import com.project.mydrive.external.document.model.Document;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,44 +35,40 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FileService {
 
-    private final String LOCAL_STORE_DIR = "local-blob";
     private final FileRepository fileRepository;
     private final FileMetadataRepository fileMetadataRepository;
     private final DirectoryRepository directoryRepository;
-
     private final UserRepository userRepository;
+    private final DocumentClient documentClient;
 
-    public APIFile save(MultipartFile file, Long parentDirId, UUID userId) throws IOException {
+    public APIFile save(MultipartFile file, Long parentDirId, UUID userId) {
 
         if (file.isEmpty()) {
-            throw new IllegalArgumentException("File is empty");
+            throw new EmptyFileException("File was empty");
         }
 
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
         var dir = parentDirId == null
                 ? directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNull(user)
-                : directoryRepository.getDirectoryByOwnerAndId(user, parentDirId).orElseThrow();
+                : directoryRepository.getDirectoryByOwnerAndId(user, parentDirId).orElseThrow(() -> new DirectoryNotFoundException("Parent directory with ID " + parentDirId + " not found."));
 
-        UUID blobRef = UUID.randomUUID();
-        //TODO move to a client
+        Document uploadedDocument;
         try {
-            var storagePath = Paths.get(LOCAL_STORE_DIR).toAbsolutePath().normalize();
-            Files.createDirectories(storagePath);
-            Path target = storagePath.resolve(blobRef.toString());
-            Files.copy(file.getInputStream(), target);
-        } catch (IOException ex) {
-            ex.printStackTrace();
+            uploadedDocument = documentClient.uploadDocument(file.getBytes(), file.getContentType());
+        } catch (IOException e) {
+            throw new FileUploadException("Failed to upload file: " + e.getMessage(), e);
         }
 
         var fileToSave = new File();
         fileToSave.setName(file.getOriginalFilename());
-        fileToSave.setBlobReferenceId(blobRef);
+        fileToSave.setBlobReferenceId(uploadedDocument.getId());
         fileToSave.setOwner(user);
         fileToSave.setParentDirectory(dir);
 
         var fileMetadata = new FileMetadata();
-        fileMetadata.setSize(BigInteger.valueOf(file.getSize()));
-        fileMetadata.setMimeType(file.getContentType());
+        fileMetadata.setSize(BigInteger.valueOf(uploadedDocument.getSize()));
+        fileMetadata.setMimeType(uploadedDocument.getContentType());
         fileMetadata.setExtension(getFileExtension(file.getOriginalFilename()));
         fileMetadata.setFile(fileToSave);
         fileToSave.setFileMetadata(fileMetadata);
@@ -71,6 +76,25 @@ public class FileService {
         var savedFile = fileRepository.save(fileToSave);
 
         return toAPIFile(savedFile);
+    }
+
+    public FileResource downloadFile(UUID blobRef, UUID userId) {
+        var user = userRepository.findById(userId).orElseThrow();
+
+        var file = fileRepository.getFileByBlobReferenceId(blobRef).orElseThrow(() -> new FileNotFoundException("File with blob reference ID " + blobRef + " not found."));
+
+        if (!file.getOwner().getId().equals(user.getId())) {
+            throw new UnauthorizedFileAccessException("File does not belong to user");
+        }
+
+        Document downloadedDocument;
+        try {
+            downloadedDocument = documentClient.downloadDocument(blobRef);
+        } catch (Exception e) {
+            throw new FileDownloadException("Failed to download file with blob reference ID " + blobRef + ": " + e.getMessage(), e);
+        }
+
+        return new FileResource(file.getName(), downloadedDocument.getContentType(), new ByteArrayResource(downloadedDocument.getContent()));
     }
 
     private APIFile toAPIFile(File file) {
@@ -91,9 +115,10 @@ public class FileService {
     }
 
     public APIFile update(Long fileId, UpdateFileRequest fileRequest, UUID userId) {
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
 
-        var file = fileRepository.getFileByOwnerAndId(user, fileId).orElseThrow();
+        var file = fileRepository.getFileByOwnerAndId(user, fileId).orElseThrow(() -> new FileNotFoundException("File with ID " + fileId + " not found for user."));
 
         if (!fileRequest.name().equals(file.getName())) {
             file.setName(fileRequest.name());
@@ -103,7 +128,7 @@ public class FileService {
                 && fileRequest.parentDirId() != null
                 && !file.getParentDirectory().getId().equals(fileRequest.parentDirId())
         ) {
-            var dir = directoryRepository.getDirectoryByOwnerAndId(user, fileRequest.parentDirId()).orElseThrow();
+            var dir = directoryRepository.getDirectoryByOwnerAndId(user, fileRequest.parentDirId()).orElseThrow(() -> new DirectoryNotFoundException("Parent directory with ID " + fileRequest.parentDirId() + " not found."));
             file.setParentDirectory(dir);
         }
 
@@ -112,7 +137,8 @@ public class FileService {
     }
 
     public List<APIFile> getFilesUnder(Long parentDirId, UUID userId) {
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
 
         //TODO should be a lil different or should not be in File Service
 
@@ -120,7 +146,7 @@ public class FileService {
         if (parentDirId == null) {
             dir = directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNull(user);
         } else {
-            dir = directoryRepository.getDirectoryByOwnerAndId(user, parentDirId).orElseThrow();
+            dir = directoryRepository.getDirectoryByOwnerAndId(user, parentDirId).orElseThrow(() -> new DirectoryNotFoundException("Directory with ID " + parentDirId + " not found."));
         }
 
         return dir.getFiles().stream().map(this::toAPIFile).toList();

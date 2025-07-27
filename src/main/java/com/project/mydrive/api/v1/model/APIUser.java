@@ -4,8 +4,8 @@ import java.util.UUID;
 
 public record APIUser(
         UUID id,
-        String username,
-        String name,
+        String firstName,
+        String lastName,
         String email,
         String storageUsed,
         String storageLimit
