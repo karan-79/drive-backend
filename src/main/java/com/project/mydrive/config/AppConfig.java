@@ -10,26 +10,24 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
-import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 @Configuration
 @Profile(value = "default")
 public class AppConfig {
 
 
-    @Value("${firebase.credentials.path}")
-    private String credentialsPath;
+    @Value("${firebase.credentials.json}")
+    private String credentialsJson;
 
     @PostConstruct
     public void init() throws IOException {
-        FileInputStream serviceAccount = new FileInputStream(credentialsPath);
+        ByteArrayInputStream serviceAccount = new ByteArrayInputStream(credentialsJson.getBytes(StandardCharsets.UTF_8));
 
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))
