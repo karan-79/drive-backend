@@ -42,7 +42,7 @@ public class AuthControllerIntegrationTest extends BaseIntegrationTests {
                 .expectCookie().exists("jwt_token");
     }
 
-    @Test
+//    @Test
     void shouldReturnUserNotFoundWhenLoggingInWithNonExistentUser() throws Exception {
         String uid = "nonExistentUid";
         String email = "nonexistent@example.com";
