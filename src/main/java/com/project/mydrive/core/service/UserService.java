@@ -83,13 +83,25 @@ public class UserService {
     }
 
 
-    public String processLogin(String uId) {
-        var decoded = getFireBaseToken(uId);
+    public String processLogin(String idToken) {
+        var decoded = getFireBaseToken(idToken);
 
         var email = decoded.getEmail();
 
+        // need to register user in case if signup didn't sync
         var user = userRepository.findByEmail(email.trim())
-                .orElseThrow(() -> new UserNotFoundException("User does not exist with email " + email));
+                .orElseGet(() -> {
+                    var u = new User();
+                    u.setUId(decoded.getUid());
+                    // TODO need to setup complete profile thing
+                    u.setFirstName("");
+                    u.setLastName("");
+                    u.setEmail(email);
+                    User saved = userRepository.save(u);
+
+                    directoryService.createRootDirForUser(saved);
+                    return saved;
+                });
 
         return jwtUtils.generateToken(user.getId().toString());
     }
