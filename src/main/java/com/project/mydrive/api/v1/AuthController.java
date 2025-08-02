@@ -37,18 +37,18 @@ public class AuthController {
 
         var token = userService.processLogin(request.idToken());
 
-        var cookie = new Cookie("jwt_token", token);
-        cookie.setHttpOnly(true);
+        String domain = ".karandeep.in";
+        String path = "/";
+        int maxAge = 600 * 60; // 10 hours in seconds
 
-        cookie.setSecure(httpsCookieScheme);
-        cookie.setPath("/");
-        cookie.setMaxAge(600); // 10hrs
-
+        // Construct the Set-Cookie header
         String cookieHeader = String.format(
-                "jwt_token=%s; Path=%s; Max-Age=%d; HttpOnly; Secure; SameSite=" + (httpsCookieScheme ? "None" : "Lax"),
-                cookie.getValue(),
-                cookie.getPath(),
-                cookie.getMaxAge());
+                "jwt_token=%s; Domain=%s; Path=%s; Max-Age=%d; HttpOnly; Secure; SameSite=Lax",
+                token,
+                domain,
+                path,
+                maxAge);
+
         response.setHeader("Set-Cookie", cookieHeader);
         return ResponseEntity.ok(new AuthResponse(
                 true,
