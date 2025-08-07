@@ -74,4 +74,12 @@ public class FilesController {
     }
 
 
+    @DeleteMapping("/{blobRef}")
+    public void deleteFile(
+            @AuthenticationPrincipal User user,
+            @PathVariable("blobRef") UUID blobRef
+    ) {
+        fileService.deleteFile(blobRef, user);
+    }
+
 }

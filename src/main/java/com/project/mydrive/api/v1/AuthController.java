@@ -23,8 +23,8 @@ public class AuthController {
 
     private final UserService userService;
 
-    @Value("${http-only-cookie.https-enabled:true}")
-    private boolean httpsCookieScheme;
+    @Value("${running-local:false}")
+    private boolean runningLocal;
 
     @SneakyThrows
     @PostMapping("/register")
@@ -37,23 +37,39 @@ public class AuthController {
 
         var token = userService.processLogin(request.idToken());
 
-        String domain = ".karandeep.in";
-        String path = "/";
-        int maxAge = 600 * 60; // 10 hours in seconds
-
-        // Construct the Set-Cookie header
-        String cookieHeader = String.format(
-                "jwt_token=%s; Domain=%s; Path=%s; Max-Age=%d; HttpOnly; Secure; SameSite=Lax",
-                token,
-                domain,
-                path,
-                maxAge);
+        String cookieHeader = runningLocal ? getCookieHeaderLocalDev(token) : getCookieHeader(token);
 
         response.setHeader("Set-Cookie", cookieHeader);
         return ResponseEntity.ok(new AuthResponse(
                 true,
                 token,
                 "Login Successful"));
+    }
+
+    private static String getCookieHeaderLocalDev(String token) {
+        String path = "/";
+        int maxAge = 600 * 60; // 10 hours in seconds
+
+        // Construct the Set-Cookie header
+        return String.format(
+                "jwt_token=%s; Path=%s; Max-Age=%d; HttpOnly; Secure; SameSite=None",
+                token,
+                path,
+                maxAge);
+    }
+
+    private static String getCookieHeader(String token) {
+        String domain = ".karandeep.in";
+        String path = "/";
+        int maxAge = 600 * 60; // 10 hours in seconds
+
+        // Construct the Set-Cookie header
+        return String.format(
+                "jwt_token=%s; Domain=%s; Path=%s; Max-Age=%d; HttpOnly; Secure; SameSite=Lax",
+                token,
+                domain,
+                path,
+                maxAge);
     }
 
     @GetMapping("/me")

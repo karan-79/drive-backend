@@ -3,6 +3,7 @@ package com.project.mydrive.core.service;
 import com.project.mydrive.api.v1.model.APIFile;
 import com.project.mydrive.api.v1.model.FileResource;
 import com.project.mydrive.api.v1.model.UpdateFileRequest;
+import com.project.mydrive.core.crons.DeletionCron;
 import com.project.mydrive.core.domain.Directory;
 import com.project.mydrive.core.domain.File;
 import com.project.mydrive.core.domain.FileMetadata;
@@ -21,6 +22,7 @@ import com.project.mydrive.core.repository.UserRepository;
 
 import com.project.mydrive.external.document.DocumentClient;
 import com.project.mydrive.external.document.model.Document;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Service;
@@ -37,10 +39,12 @@ public class FileService {
 
     private final FileRepository fileRepository;
     private final FileMetadataRepository fileMetadataRepository;
+    private final DeletionCron deletionCron;
     private final DirectoryRepository directoryRepository;
     private final UserRepository userRepository;
     private final DocumentClient documentClient;
 
+    @Transactional
     public APIFile save(MultipartFile file, Long parentDirId, UUID userId) {
 
         if (file.isEmpty()) {
@@ -50,8 +54,8 @@ public class FileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
         var dir = parentDirId == null
-                ? directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNull(user)
-                : directoryRepository.getDirectoryByOwnerAndId(user, parentDirId).orElseThrow(() -> new DirectoryNotFoundException("Parent directory with ID " + parentDirId + " not found."));
+                ? directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNullAndIsDeletedIsFalse(user)
+                : directoryRepository.getDirectoryByOwnerAndIdAndIsDeletedIsFalse(user, parentDirId).orElseThrow(() -> new DirectoryNotFoundException("Parent directory with ID " + parentDirId + " not found."));
 
         Document uploadedDocument;
         try {
@@ -97,6 +101,24 @@ public class FileService {
         return new FileResource(file.getName(), downloadedDocument.getContentType(), new ByteArrayResource(downloadedDocument.getContent()));
     }
 
+    /** LEARNED: Eventual consistency
+     *  Don't delete files immediately, instead mark them as deleted.
+     *  and a cron would handle stuff about actual deletion
+     */
+
+    public void deleteFile(UUID blobRef, User user) {
+        // validate if user owns the file
+        var file = fileRepository.getFileByBlobReferenceId(blobRef).orElseThrow(() -> new FileNotFoundException("File with blob reference ID " + blobRef + " not found."));
+
+        if (!file.getOwner().getId().equals(user.getId())) {
+            throw new UnauthorizedFileAccessException("File does not belong to user");
+        }
+
+        file.setDeleted(true);
+        fileRepository.save(file);
+        deletionCron.invokeCleanUp();
+    }
+
     private APIFile toAPIFile(File file) {
         return new APIFile(
                 file.getId(),
@@ -118,7 +140,7 @@ public class FileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
 
-        var file = fileRepository.getFileByOwnerAndId(user, fileId).orElseThrow(() -> new FileNotFoundException("File with ID " + fileId + " not found for user."));
+        var file = fileRepository.getFileByOwnerAndIdAndIsDeletedIsFalse(user, fileId).orElseThrow(() -> new FileNotFoundException("File with ID " + fileId + " not found for user."));
 
         if (!fileRequest.name().equals(file.getName())) {
             file.setName(fileRequest.name());
@@ -128,7 +150,7 @@ public class FileService {
                 && fileRequest.parentDirId() != null
                 && !file.getParentDirectory().getId().equals(fileRequest.parentDirId())
         ) {
-            var dir = directoryRepository.getDirectoryByOwnerAndId(user, fileRequest.parentDirId()).orElseThrow(() -> new DirectoryNotFoundException("Parent directory with ID " + fileRequest.parentDirId() + " not found."));
+            var dir = directoryRepository.getDirectoryByOwnerAndIdAndIsDeletedIsFalse(user, fileRequest.parentDirId()).orElseThrow(() -> new DirectoryNotFoundException("Parent directory with ID " + fileRequest.parentDirId() + " not found."));
             file.setParentDirectory(dir);
         }
 
@@ -141,12 +163,11 @@ public class FileService {
                 .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
 
         //TODO should be a lil different or should not be in File Service
-
         Directory dir = null;
         if (parentDirId == null) {
-            dir = directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNull(user);
+            dir = directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNullAndIsDeletedIsFalse(user);
         } else {
-            dir = directoryRepository.getDirectoryByOwnerAndId(user, parentDirId).orElseThrow(() -> new DirectoryNotFoundException("Directory with ID " + parentDirId + " not found."));
+            dir = directoryRepository.getDirectoryByOwnerAndIdAndIsDeletedIsFalse(user, parentDirId).orElseThrow(() -> new DirectoryNotFoundException("Directory with ID " + parentDirId + " not found."));
         }
 
         return dir.getFiles().stream().map(this::toAPIFile).toList();
