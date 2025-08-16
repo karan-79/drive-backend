@@ -10,7 +10,7 @@ import java.util.Optional;
 
 public interface DirectoryRepository extends JpaRepository<Directory, Long> {
     Optional<Directory> getDirectoryByOwnerAndIdAndIsDeletedIsFalse(User owner, Long id);
-    List<Directory> findAllByOwner(User owner);
+    List<Directory> findAllByOwnerAndIsDeletedIsFalse(User owner);
 
     Directory getDirectoryByOwnerAndParentDirectoryIsNullAndIsDeletedIsFalse(User owner);
 

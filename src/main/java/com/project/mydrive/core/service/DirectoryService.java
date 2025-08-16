@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 @Service
 @RequiredArgsConstructor
@@ -91,15 +92,18 @@ public class DirectoryService {
             dir = directoryRepository.getDirectoryByOwnerAndIdAndIsDeletedIsFalse(user, parentDir).orElseThrow();
         }
 
-        return dir.getSubDirectories().stream().map(this::toApiDir).toList();
+        return dir.getSubDirectories()
+                .stream()
+                .filter(Predicate.not(Directory::isDeleted))
+                .map(this::toApiDir)
+                .toList();
     }
 
     public List<APIDirectory> getAllDirs(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
 
-        return directoryRepository.findAllByOwner(user).stream().map(this::toApiDir).toList();
-
+        return directoryRepository.findAllByOwnerAndIsDeletedIsFalse(user).stream().map(this::toApiDir).toList();
     }
 
     public void deleteDir(Long dirId, User user) {
@@ -115,6 +119,5 @@ public class DirectoryService {
         directoryRepository.save(dir);
 
         deletionCron.invokeCleanUp();
-
     }
 }

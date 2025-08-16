@@ -24,6 +24,10 @@ public class DeletionCron {
         documentClient.deleteDocuments(allDeletedFiles.stream().map(File::getBlobReferenceId).toList());
         fileRepository.deleteAll(allDeletedFiles);
 
+        allDeletedDirectories.forEach(dir -> {
+            fileRepository.deleteAll(dir.getFiles());
+        });
+
         directoryRepository.deleteAll(allDeletedDirectories);
     }
 
