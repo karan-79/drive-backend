@@ -24,6 +24,8 @@ public class File {
     UUID blobReferenceId;
 
     boolean isStarred = false;
+
+    @Column(name = "IS_DELETED")
     boolean isDeleted = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
