@@ -108,7 +108,8 @@ public class DirectoryService {
 
     public void deleteDir(Long dirId, User user) {
 
-        Directory dir = directoryRepository.getDirectoryByOwnerAndIdAndIsDeletedIsFalse(user, dirId).orElseThrow(() -> new DirectoryNotFoundException("Directory with ID " + dirId + " not found."));
+        Directory dir = directoryRepository.getDirectoryByOwnerAndIdAndIsDeletedIsFalse(user, dirId)
+                .orElseThrow(() -> new DirectoryNotFoundException("Directory with ID " + dirId + " not found."));
 
         // Ensure the directory is not the root directory
         if (dir.getParentDirectory() == null) {

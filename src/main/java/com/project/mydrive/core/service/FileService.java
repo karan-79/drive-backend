@@ -101,9 +101,10 @@ public class FileService {
         return new FileResource(file.getName(), downloadedDocument.getContentType(), new ByteArrayResource(downloadedDocument.getContent()));
     }
 
-    /** LEARNED: Eventual consistency
-     *  Don't delete files immediately, instead mark them as deleted.
-     *  and a cron would handle stuff about actual deletion
+    /**
+     * LEARNED: Eventual consistency
+     * Don't delete files immediately, instead mark them as deleted.
+     * and a cron would handle stuff about actual deletion
      */
 
     public void deleteFile(UUID blobRef, User user) {

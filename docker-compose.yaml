@@ -9,13 +9,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "5432:5433"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   localstack:
     image: localstack/localstack:latest
-    container_name: local-localstack
+    container_name: local-localstack-drive
     environment:
       - SERVICES=s3
       - DEBUG=1
@@ -23,8 +23,8 @@ services:
     ports:
       - "4566:4566"
     volumes:
-      - localstack_data:/.data
+      - localstack_data_drive:/.data
 
 volumes:
   postgres_data:
-  localstack_data:
+  localstack_data_drive:
