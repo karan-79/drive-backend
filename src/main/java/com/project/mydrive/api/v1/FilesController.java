@@ -3,6 +3,7 @@ package com.project.mydrive.api.v1;
 import com.project.mydrive.api.v1.model.APIFile;
 import com.project.mydrive.api.v1.model.UpdateFileRequest;
 import com.project.mydrive.core.domain.User;
+import com.project.mydrive.core.service.CleanUpService;
 import com.project.mydrive.core.service.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -24,7 +25,6 @@ public class FilesController {
 
     // TODO temporary
     private final FileService fileService;
-
 
     @PostMapping
     public APIFile uploadFile(
@@ -73,5 +73,13 @@ public class FilesController {
                 .body(fileResource.resource());
     }
 
+
+    @DeleteMapping("/{blobRef}")
+    public void deleteFile(
+            @AuthenticationPrincipal User user,
+            @PathVariable("blobRef") UUID blobRef
+    ) {
+        fileService.deleteFile(blobRef, user);
+    }
 
 }

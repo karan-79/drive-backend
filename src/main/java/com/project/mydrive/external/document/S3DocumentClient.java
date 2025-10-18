@@ -78,6 +78,9 @@ public class S3DocumentClient implements DocumentClient {
 
     @Override
     public void deleteDocuments(List<UUID> ids) throws DocumentDeletionException {
+        if(ids == null || ids.isEmpty()) {
+            return; // Nothing to delete
+        }
         try {
             DeleteObjectsRequest request = DeleteObjectsRequest.builder()
                     .bucket(bucketName)

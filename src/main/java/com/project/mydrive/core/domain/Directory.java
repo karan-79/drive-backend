@@ -23,6 +23,8 @@ public class Directory {
     String name;
 
     boolean isStarred = false;
+
+    @Column(name = "IS_DELETED")
     boolean isDeleted = false;
 
     @ManyToOne(fetch = FetchType.LAZY)

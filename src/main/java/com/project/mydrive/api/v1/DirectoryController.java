@@ -50,5 +50,13 @@ public class DirectoryController {
         return directoryService.getAllDirs(user.getId());
     }
 
+    @DeleteMapping("/{dirId}")
+    public void deleteDir(
+            @AuthenticationPrincipal User user,
+            @PathVariable("dirId") Long dirId
+    ) {
+        directoryService.deleteDir(dirId, user);
+    }
+
 
 }

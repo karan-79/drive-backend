@@ -4,18 +4,14 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import com.project.mydrive.api.v1.model.APIUser;
-import com.project.mydrive.api.v1.model.CreateUserRequest;
 import com.project.mydrive.api.v1.model.FirebaseAuthRequest;
 import com.project.mydrive.core.domain.User;
 import com.project.mydrive.core.exception.FirebaseTokenException;
 import com.project.mydrive.core.exception.UserAlreadyExistsException;
-import com.project.mydrive.core.exception.UserNotFoundException;
 import com.project.mydrive.core.repository.UserRepository;
 import com.project.mydrive.utils.JwtUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.apache.coyote.BadRequestException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;

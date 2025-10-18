@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class FilesControllerIntegrationTest extends BaseIntegrationTests {
 
@@ -44,7 +45,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
         authenticatedWebTestClient = getAuthenticatedWebTestClient(uid, email);
 
         testUser = userRepository.findById(apiUser.id()).orElseThrow();
-        rootDirectory = directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNull(testUser);
+        rootDirectory = directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNullAndIsDeletedIsFalse(testUser);
     }
 
     @Test
@@ -62,6 +63,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
                 .value(apiFile -> {
                     assertThat(apiFile.name()).isEqualTo("test.txt");
                     assertThat(apiFile.size()).isEqualTo(13L);
+                    assertTrue(fileRepository.findById(apiFile.id()).isPresent());
                 });
     }
 
@@ -195,7 +197,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
 
         MockMultipartFile otherUserFile = new MockMultipartFile("file", "other_file.txt", "text/plain", "Content from other user.".getBytes());
         APIFile uploadedFile = otherUserClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
-                        .queryParam("parentDirId", directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNull(userRepository.findByEmail(otherEmail).orElseThrow()).getId())
+                        .queryParam("parentDirId", directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNullAndIsDeletedIsFalse(userRepository.findByEmail(otherEmail).orElseThrow()).getId())
                         .build())
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(BodyInserters.fromMultipartData(toMultipartData(otherUserFile)))
@@ -271,12 +273,12 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
         ByteArrayResource resource = null;
         try {
 
-         resource = new ByteArrayResource(file.getBytes()) {
-            @Override
-            public String getFilename() {
-                return file.getOriginalFilename();
-            }
-        };
+            resource = new ByteArrayResource(file.getBytes()) {
+                @Override
+                public String getFilename() {
+                    return file.getOriginalFilename();
+                }
+            };
 
         } catch (Exception e) {
             e.printStackTrace();
