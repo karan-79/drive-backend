@@ -7,6 +7,7 @@ import com.project.mydrive.api.v1.model.APIUser;
 import com.project.mydrive.api.v1.model.FirebaseAuthRequest;
 import com.project.mydrive.config.TestConfig;
 import com.project.mydrive.core.repository.DirectoryRepository;
+import com.project.mydrive.core.repository.FileRepository;
 import com.project.mydrive.core.repository.UserRepository;
 import com.project.mydrive.external.document.DocumentClient;
 import com.project.mydrive.utils.JwtUtils;
@@ -38,6 +39,9 @@ public class BaseIntegrationTests {
 
     @Autowired
     protected DirectoryRepository directoryRepository;
+
+    @Autowired
+    protected FileRepository fileRepository;
 
     @Autowired
     protected WebTestClient webTestClient;

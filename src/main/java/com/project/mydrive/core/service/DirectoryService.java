@@ -5,6 +5,7 @@ import com.project.mydrive.core.crons.DeletionCron;
 import com.project.mydrive.core.domain.Directory;
 import com.project.mydrive.core.domain.User;
 import com.project.mydrive.core.exception.DirectoryNotFoundException;
+import com.project.mydrive.core.exception.RootDirectoryModificationException;
 import com.project.mydrive.core.exception.UserNotFoundException;
 import com.project.mydrive.core.repository.DirectoryRepository;
 import com.project.mydrive.core.repository.UserRepository;
@@ -28,7 +29,11 @@ public class DirectoryService {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
-        var dir = parentDir == null ? getRootDirForUser(user) : directoryRepository.getDirectoryByOwnerAndIdAndIsDeletedIsFalse(user, parentDir).orElseThrow(() -> new DirectoryNotFoundException("Parent directory with ID " + parentDir + " not found."));
+
+        var dir = parentDir == null
+                ? getRootDirForUser(user)
+                : directoryRepository.getDirectoryByOwnerAndIdAndIsDeletedIsFalse(user, parentDir)
+                    .orElseThrow(() -> new DirectoryNotFoundException("Parent directory with ID " + parentDir + " not found."));
 
         var newDir = new Directory();
         newDir.setName(name);
@@ -113,7 +118,7 @@ public class DirectoryService {
 
         // Ensure the directory is not the root directory
         if (dir.getParentDirectory() == null) {
-            throw new IllegalArgumentException("Cannot delete root directory.");
+            throw new RootDirectoryModificationException("Cannot delete root directory.");
         }
 
         dir.setDeleted(true);

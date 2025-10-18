@@ -7,8 +7,9 @@ import com.project.mydrive.core.exception.FileNotFoundException;
 import com.project.mydrive.core.exception.FileUploadException;
 import com.project.mydrive.core.exception.FirebaseTokenException;
 import com.project.mydrive.core.exception.LoginFailedException;
-import com.project.mydrive.core.exception.UserAlreadyExistsException;
+import com.project.mydrive.core.exception.RootDirectoryModificationException;
 import com.project.mydrive.core.exception.UnauthorizedFileAccessException;
+import com.project.mydrive.core.exception.UserAlreadyExistsException;
 import com.project.mydrive.core.exception.UserNotFoundException;
 import org.apache.coyote.BadRequestException;
 import org.springframework.http.HttpStatus;
@@ -101,6 +102,14 @@ public class GlobalExceptionHandler {
         errorResponse.put("error", "File Download Failed");
         errorResponse.put("message", ex.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(RootDirectoryModificationException.class)
+    public ResponseEntity<Map<String, String>> handleRootDirectoryModificationException(RootDirectoryModificationException ex) {
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "Bad Request");
+        errorResponse.put("message", ex.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)
