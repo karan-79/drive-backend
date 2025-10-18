@@ -29,6 +29,7 @@ import static org.mockito.Mockito.mock;
 @TestConfiguration
 public class TestConfig {
 
+    // TODO perhaps not the right way haha, fix later (never)
     @Bean
     public FirebaseAuth firebaseAuth() {
         return mock(FirebaseAuth.class);
