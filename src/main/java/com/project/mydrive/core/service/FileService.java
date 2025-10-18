@@ -3,23 +3,15 @@ package com.project.mydrive.core.service;
 import com.project.mydrive.api.v1.model.APIFile;
 import com.project.mydrive.api.v1.model.FileResource;
 import com.project.mydrive.api.v1.model.UpdateFileRequest;
-import com.project.mydrive.core.crons.DeletionCron;
 import com.project.mydrive.core.domain.Directory;
 import com.project.mydrive.core.domain.File;
 import com.project.mydrive.core.domain.FileMetadata;
 import com.project.mydrive.core.domain.User;
-import com.project.mydrive.core.exception.DirectoryNotFoundException;
-import com.project.mydrive.core.exception.EmptyFileException;
-import com.project.mydrive.core.exception.FileDownloadException;
-import com.project.mydrive.core.exception.FileNotFoundException;
-import com.project.mydrive.core.exception.FileUploadException;
-import com.project.mydrive.core.exception.UnauthorizedFileAccessException;
-import com.project.mydrive.core.exception.UserNotFoundException;
+import com.project.mydrive.core.exception.*;
 import com.project.mydrive.core.repository.DirectoryRepository;
 import com.project.mydrive.core.repository.FileMetadataRepository;
 import com.project.mydrive.core.repository.FileRepository;
 import com.project.mydrive.core.repository.UserRepository;
-
 import com.project.mydrive.external.document.DocumentClient;
 import com.project.mydrive.external.document.model.Document;
 import jakarta.transaction.Transactional;
@@ -38,7 +30,6 @@ import java.util.UUID;
 public class FileService {
 
     private final FileRepository fileRepository;
-    private final FileMetadataRepository fileMetadataRepository;
     private final CleanUpService cleanUpService;
     private final DirectoryRepository directoryRepository;
     private final UserRepository userRepository;
