@@ -1,22 +1,16 @@
 package com.project.mydrive;
 
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.FirebaseOptions;
-import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-import java.io.FileInputStream;
-import java.io.IOException;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling
+@EnableAsync
 public class MyDriveApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(MyDriveApplication.class, args);
-	}
-
-
+    public static void main(String[] args) {
+        SpringApplication.run(MyDriveApplication.class, args);
+    }
 }

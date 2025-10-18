@@ -39,7 +39,7 @@ public class FileService {
 
     private final FileRepository fileRepository;
     private final FileMetadataRepository fileMetadataRepository;
-    private final DeletionCron deletionCron;
+    private final CleanUpService cleanUpService;
     private final DirectoryRepository directoryRepository;
     private final UserRepository userRepository;
     private final DocumentClient documentClient;
@@ -117,7 +117,7 @@ public class FileService {
 
         file.setDeleted(true);
         fileRepository.save(file);
-        deletionCron.invokeCleanUp();
+        cleanUpService.deleteFilesOnBlobAsync();
     }
 
     private APIFile toAPIFile(File file) {

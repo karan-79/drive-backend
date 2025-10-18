@@ -1,7 +1,6 @@
 package com.project.mydrive.core.service;
 
 import com.project.mydrive.api.v1.model.APIDirectory;
-import com.project.mydrive.core.crons.DeletionCron;
 import com.project.mydrive.core.domain.Directory;
 import com.project.mydrive.core.domain.User;
 import com.project.mydrive.core.exception.DirectoryNotFoundException;
@@ -22,7 +21,7 @@ import java.util.function.Predicate;
 public class DirectoryService {
 
     private final DirectoryRepository directoryRepository;
-    private final DeletionCron deletionCron;
+    private final CleanUpService cleanUpService;
     private final UserRepository userRepository;
 
     public APIDirectory createDir(String name, Long parentDir, UUID userId) {
@@ -124,6 +123,6 @@ public class DirectoryService {
         dir.setDeleted(true);
         directoryRepository.save(dir);
 
-        deletionCron.invokeCleanUp();
+        cleanUpService.deleteFilesOnBlobAsync();
     }
 }
