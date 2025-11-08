@@ -77,6 +77,8 @@ jobs:
             -e SPRING_DATASOURCE_URL="${{ secrets.NEON_DB_CONNECTION_STRING }}" \
             -e FIREBASE_CREDENTIALS_JSON='${{ secrets.FIREBASE_CREDENTIALS_JSON }}' \
             -e JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}" \
+            -e GARAGE_ACCESS_KEY="${{ secrets.GARAGE_ACCESS_KEY }}" \
+            -e GARAGE_SECRET_KEY="${{ secrets.GARAGE_SECRET_KEY }}" \
             ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
 
           docker image prune -f
