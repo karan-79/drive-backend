@@ -66,7 +66,7 @@ public class AppConfig {
     }
 
     @Bean
-    public DocumentClient documentClient(@Value("${aws.bucket-name}") String bucketName, S3Client client) {
+    public DocumentClient documentClient(@Value("${garage.bucket.name}") String bucketName, S3Client client) {
         return new S3DocumentClient(client, bucketName);
     }
 }
