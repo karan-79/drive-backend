@@ -10,11 +10,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Configuration;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 
 @Configuration
@@ -43,13 +47,21 @@ public class AppConfig {
 
     @Bean
     public S3Client s3Client(
-            @Value("${aws.bucket-name}") String bucketName,
-            @Value("${aws.region}") String region
+            @Value("${garage.endpoint:http://localhost:3900}") String garageEndpoint,
+            @Value("${garage.access-key}") String accessKey,
+            @Value("${garage.secret-key}") String secretKey,
+            @Value("${garage.region:garage}") String region
     ) {
 
         return S3Client.builder()
-                // EC2 instance profile gets picked automatically
-                .region(Region.EU_NORTH_1)
+                .endpointOverride(URI.create(garageEndpoint))
+                .region(Region.of(region))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(accessKey, secretKey)
+                ))
+                .serviceConfiguration(S3Configuration.builder()
+                        .pathStyleAccessEnabled(true)
+                        .build())
                 .build();
     }
 
