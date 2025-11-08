@@ -73,6 +73,7 @@ jobs:
           docker run -d \
             --name drive-clone-app \
             -p 8081:8080 \
+            --network garage-net \
             --restart unless-stopped \
             -e SPRING_DATASOURCE_URL="${{ secrets.NEON_DB_CONNECTION_STRING }}" \
             -e FIREBASE_CREDENTIALS_JSON='${{ secrets.FIREBASE_CREDENTIALS_JSON }}' \
