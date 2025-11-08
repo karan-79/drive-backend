@@ -44,14 +44,15 @@ public class SecurityConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**") // Allow CORS for all paths
-                        .allowedOrigins("http://localhost:3000") // Allowed origins
-                        .allowedOriginPatterns("*")
-                        .allowedMethods("GET", "POST", "PUT", "DELETE") // Allowed HTTP methods
-                        .allowedHeaders("*") // Allowed headers
+                registry.addMapping("/**")
+                        .allowedOriginPatterns(
+                                "https://projects.drive.karandeep.in",
+                                "http://localhost:3000"
+                        )
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
                         .exposedHeaders("Content-Disposition")
-                        .allowCredentials(true); // Allow credentials (cookies, etc.
-            }
+                        .allowCredentials(true);            }
         };
     }
 
