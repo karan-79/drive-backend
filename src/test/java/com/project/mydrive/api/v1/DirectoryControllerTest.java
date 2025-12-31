@@ -2,7 +2,6 @@ package com.project.mydrive.api.v1;
 
 import com.project.mydrive.BaseIntegrationTests;
 import com.project.mydrive.api.v1.model.APIDirectory;
-import com.project.mydrive.api.v1.model.APIUser;
 import com.project.mydrive.api.v1.model.CreateDirectoryRequest;
 import com.project.mydrive.core.domain.Directory;
 import com.project.mydrive.core.domain.User;
@@ -10,6 +9,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
+
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -20,21 +21,26 @@ class DirectoryControllerTest extends BaseIntegrationTests {
     private User testUser;
     private Directory rootDirectory;
 
-    private WebTestClient authenticatedWebTestClient;
-
     @BeforeEach
     void setupUserAndDirectory() throws Exception {
-        super.setup();
 
+        super.setup();
+        // why am i doing every test class with a separate user ??
         String uid = "dirtestuser_" + System.currentTimeMillis();
         String email = "dirtest_" + System.currentTimeMillis() + "@example.com";
         String firstName = "Dir";
         String lastName = "Test";
 
-        APIUser apiUser = registerAndLoginUser(uid, email, firstName, lastName);
-        authenticatedWebTestClient = getAuthenticatedWebTestClient(uid, email);
+        // if present then test user is already logged in.
+        if(userRepository.findByuId(uid).isPresent()) return;
 
-        testUser = userRepository.findById(apiUser.id()).orElseThrow();
+        var token = registerAndLoginUser(uid, email, firstName, lastName);
+
+        this.webTestClient = this.webTestClient.mutate()
+                .defaultCookie("jwt_token", token)
+                .build();
+
+        testUser = userRepository.findByuId(uid).orElseThrow();
         rootDirectory = directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNullAndIsDeletedIsFalse(testUser);
     }
 
@@ -42,7 +48,7 @@ class DirectoryControllerTest extends BaseIntegrationTests {
     void createDir() {
         CreateDirectoryRequest request = new CreateDirectoryRequest("new-dir", rootDirectory.getId());
 
-        authenticatedWebTestClient.post().uri("/v1/directories")
+        webTestClient.post().uri("/v1/directories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -59,7 +65,7 @@ class DirectoryControllerTest extends BaseIntegrationTests {
     void createDir_shouldFailForNonExistentParent() {
         CreateDirectoryRequest request = new CreateDirectoryRequest("new-dir", 9999L);
 
-        authenticatedWebTestClient.post().uri("/v1/directories")
+        webTestClient.post().uri("/v1/directories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -73,7 +79,7 @@ class DirectoryControllerTest extends BaseIntegrationTests {
 
         CreateDirectoryRequest updateRequest = new CreateDirectoryRequest("renamed-dir", rootDirectory.getId());
 
-        authenticatedWebTestClient.put().uri("/v1/directories/{dirId}", createdDir.id())
+        webTestClient.put().uri("/v1/directories/{dirId}", createdDir.id())
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updateRequest)
                 .exchange()
@@ -95,7 +101,7 @@ class DirectoryControllerTest extends BaseIntegrationTests {
 
         CreateDirectoryRequest updateRequest = new CreateDirectoryRequest(dir2.name(), dir1.id());
 
-        authenticatedWebTestClient.put().uri("/v1/directories/{dirId}", dir2.id())
+        webTestClient.put().uri("/v1/directories/{dirId}", dir2.id())
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updateRequest)
                 .exchange()
@@ -112,7 +118,7 @@ class DirectoryControllerTest extends BaseIntegrationTests {
     @Test
     void updateDir_shouldFailForNonExistentDir() {
         CreateDirectoryRequest updateRequest = new CreateDirectoryRequest("new-name", rootDirectory.getId());
-        authenticatedWebTestClient.put().uri("/v1/directories/{dirId}", 9999L)
+        webTestClient.put().uri("/v1/directories/{dirId}", 9999L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updateRequest)
                 .exchange()
@@ -124,7 +130,7 @@ class DirectoryControllerTest extends BaseIntegrationTests {
         APIDirectory dir1 = createDirectory("dir1", rootDirectory.getId());
         APIDirectory dir2 = createDirectory("dir2", rootDirectory.getId());
 
-        authenticatedWebTestClient.get().uri(uriBuilder -> uriBuilder.path("/v1/directories")
+        webTestClient.get().uri(uriBuilder -> uriBuilder.path("/v1/directories")
                         .queryParam("parentDirId", rootDirectory.getId())
                         .build())
                 .exchange()
@@ -138,7 +144,7 @@ class DirectoryControllerTest extends BaseIntegrationTests {
     void getDirs_shouldReturnEmptyListForEmptyDirectory() {
         APIDirectory newDir = createDirectory("new-empty-dir", rootDirectory.getId());
 
-        authenticatedWebTestClient.get().uri(uriBuilder -> uriBuilder.path("/v1/directories")
+        webTestClient.get().uri(uriBuilder -> uriBuilder.path("/v1/directories")
                         .queryParam("parentDirId", newDir.id())
                         .build())
                 .exchange()
@@ -152,7 +158,7 @@ class DirectoryControllerTest extends BaseIntegrationTests {
         APIDirectory dir1 = createDirectory("dir1", rootDirectory.getId());
         APIDirectory dir1_1 = createDirectory("dir1_1", dir1.id());
 
-        authenticatedWebTestClient.get().uri("/v1/directories/all")
+        webTestClient.get().uri("/v1/directories/all")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBodyList(APIDirectory.class)
@@ -168,7 +174,7 @@ class DirectoryControllerTest extends BaseIntegrationTests {
     void deleteDir() {
         APIDirectory dirToDelete = createDirectory("to-delete", rootDirectory.getId());
 
-        authenticatedWebTestClient.delete().uri("/v1/directories/{dirId}", dirToDelete.id())
+        webTestClient.delete().uri("/v1/directories/{dirId}", dirToDelete.id())
                 .exchange()
                 .expectStatus().isOk();
 
@@ -176,7 +182,7 @@ class DirectoryControllerTest extends BaseIntegrationTests {
         assertTrue(deletedDir.isDeleted());
 
         // Verify it's not returned by getDirs
-        authenticatedWebTestClient.get().uri(uriBuilder -> uriBuilder.path("/v1/directories")
+        webTestClient.get().uri(uriBuilder -> uriBuilder.path("/v1/directories")
                         .queryParam("parentDirId", rootDirectory.getId())
                         .build())
                 .exchange()
@@ -187,21 +193,21 @@ class DirectoryControllerTest extends BaseIntegrationTests {
 
     @Test
     void deleteDir_shouldFailForRootDir() {
-        authenticatedWebTestClient.delete().uri("/v1/directories/{dirId}", rootDirectory.getId())
+        webTestClient.delete().uri("/v1/directories/{dirId}", rootDirectory.getId())
                 .exchange()
                 .expectStatus().isBadRequest();
     }
 
     @Test
     void deleteDir_shouldFailForNonExistentDir() {
-        authenticatedWebTestClient.delete().uri("/v1/directories/{dirId}", 9999L)
+        webTestClient.delete().uri("/v1/directories/{dirId}", 9999L)
                 .exchange()
                 .expectStatus().isNotFound();
     }
 
     private APIDirectory createDirectory(String name, Long parentId) {
         CreateDirectoryRequest request = new CreateDirectoryRequest(name, parentId);
-        return authenticatedWebTestClient.post().uri("/v1/directories")
+        return webTestClient.post().uri("/v1/directories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()

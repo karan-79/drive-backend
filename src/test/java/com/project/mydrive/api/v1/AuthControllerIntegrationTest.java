@@ -1,5 +1,6 @@
 package com.project.mydrive.api.v1;
 
+import com.google.firebase.auth.FirebaseToken;
 import com.project.mydrive.BaseIntegrationTests;
 import com.project.mydrive.api.v1.model.APIUser;
 import com.project.mydrive.api.v1.model.FirebaseAuthRequest;
@@ -8,6 +9,7 @@ import org.springframework.http.MediaType;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 
 public class AuthControllerIntegrationTest extends BaseIntegrationTests {
 
@@ -18,21 +20,33 @@ public class AuthControllerIntegrationTest extends BaseIntegrationTests {
         String firstName = "Test";
         String lastName = "User";
 
-        APIUser apiUser = registerAndLoginUser(uid, email, firstName, lastName);
+        FirebaseToken mockToken = mockFirebaseToken(uid, email);
+        when(firebaseAuth.verifyIdToken(mockToken.getUid())).thenReturn(mockToken);
 
+        FirebaseAuthRequest authRequest = new FirebaseAuthRequest(mockToken.getUid(), firstName, lastName);
+
+        APIUser apiUser = webTestClient.post().uri("/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(authRequest)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(APIUser.class)
+                .returnResult().getResponseBody();
+
+        assertThat(apiUser).isNotNull();
         assertThat(apiUser.email()).isEqualTo(email);
         assertThat(apiUser.firstName()).isEqualTo(firstName);
         assertThat(apiUser.lastName()).isEqualTo(lastName);
     }
 
     @Test
-    void shouldLoginUser() throws Exception {
+    void shouldLoginUser() {
         String uid = "testUid2";
         String email = "test2@example.com";
         String firstName = "Test";
         String lastName = "User";
 
-        registerAndLoginUser(uid, email, firstName, lastName);
+        createTestUser(uid, email, firstName, lastName);
 
         webTestClient.post().uri("/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -42,7 +56,8 @@ public class AuthControllerIntegrationTest extends BaseIntegrationTests {
                 .expectCookie().exists("jwt_token");
     }
 
-//    @Test
+
+    //    @Test
     void shouldReturnUserNotFoundWhenLoggingInWithNonExistentUser() throws Exception {
         String uid = "nonExistentUid";
         String email = "nonexistent@example.com";
@@ -82,8 +97,7 @@ public class AuthControllerIntegrationTest extends BaseIntegrationTests {
         String firstName = "Existing";
         String lastName = "User";
 
-        // Register the user once
-        registerAndLoginUser(uid, email, firstName, lastName);
+        createTestUser(uid, email, firstName, lastName);
 
         // Try to register again
         webTestClient.post().uri("/v1/auth/register")

@@ -2,12 +2,12 @@ package com.project.mydrive.api.v1;
 
 import com.project.mydrive.BaseIntegrationTests;
 import com.project.mydrive.api.v1.model.APIFile;
-import com.project.mydrive.api.v1.model.APIUser;
 import com.project.mydrive.api.v1.model.UpdateFileRequest;
 import com.project.mydrive.core.domain.Directory;
 import com.project.mydrive.core.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -30,8 +30,6 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
     private User testUser;
     private Directory rootDirectory;
 
-    private WebTestClient authenticatedWebTestClient;
-
     @BeforeEach
     void setupUserAndDirectory() throws Exception {
         super.setup();
@@ -41,10 +39,16 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
         String firstName = "File";
         String lastName = "Test";
 
-        APIUser apiUser = registerAndLoginUser(uid, email, firstName, lastName);
-        authenticatedWebTestClient = getAuthenticatedWebTestClient(uid, email);
+        // if present then test user is already logged in.
+        if(userRepository.findByuId(uid).isPresent()) return;
 
-        testUser = userRepository.findById(apiUser.id()).orElseThrow();
+        var token = registerAndLoginUser(uid, email, firstName, lastName);
+
+        this.webTestClient = webTestClient.mutate()
+                .defaultCookie("jwt_token", token)
+                .build();
+
+        testUser = userRepository.findByuId(uid).orElseThrow();
         rootDirectory = directoryRepository.getDirectoryByOwnerAndParentDirectoryIsNullAndIsDeletedIsFalse(testUser);
     }
 
@@ -52,7 +56,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
     void shouldUploadFile() {
         MockMultipartFile file = new MockMultipartFile("file", "test.txt", "text/plain", "Hello, World!".getBytes());
 
-        authenticatedWebTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
+        webTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
                         .queryParam("parentDirId", rootDirectory.getId())
                         .build())
                 .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -72,7 +76,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
         // Upload file
         MockMultipartFile file = new MockMultipartFile("file", "download_test.txt", "text/plain", "Downloadable content.".getBytes());
 
-        APIFile uploadedFile = authenticatedWebTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
+        APIFile uploadedFile = webTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
                         .queryParam("parentDirId", rootDirectory.getId())
                         .build())
                 .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -82,7 +86,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
                 .expectBody(APIFile.class)
                 .returnResult().getResponseBody();
 
-        authenticatedWebTestClient.get().uri("/v1/files/{blobRef}", uploadedFile.blobRef())
+        webTestClient.get().uri("/v1/files/{blobRef}", uploadedFile.blobRef())
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.TEXT_PLAIN)
@@ -94,7 +98,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
     void shouldUpdateFile() {
         MockMultipartFile file = new MockMultipartFile("file", "update_test.txt", "text/plain", "Content to be updated.".getBytes());
 
-        APIFile uploadedFile = authenticatedWebTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
+        APIFile uploadedFile = webTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
                         .queryParam("parentDirId", rootDirectory.getId())
                         .build())
                 .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -106,7 +110,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
 
         UpdateFileRequest updateRequest = new UpdateFileRequest("updated_name.txt", rootDirectory.getId());
 
-        authenticatedWebTestClient.put().uri("/v1/files/{fileId}", uploadedFile.id())
+        webTestClient.put().uri("/v1/files/{fileId}", uploadedFile.id())
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updateRequest)
                 .exchange()
@@ -123,7 +127,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
         MockMultipartFile file2 = new MockMultipartFile("file", "file2.txt", "text/plain", "Content of file 2.".getBytes());
 
         for (MockMultipartFile file : List.of(file1, file2)) {
-            authenticatedWebTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
+            webTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
                             .queryParam("parentDirId", rootDirectory.getId())
                             .build())
                     .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -132,7 +136,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
                     .expectStatus().isOk();
         }
 
-        authenticatedWebTestClient.get().uri(uriBuilder -> uriBuilder.path("/v1/files")
+        webTestClient.get().uri(uriBuilder -> uriBuilder.path("/v1/files")
                         .queryParam("parentDirId", rootDirectory.getId())
                         .build())
                 .exchange()
@@ -149,7 +153,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
     void shouldReturnEmptyFileExceptionWhenUploadingEmptyFile() throws Exception {
         MockMultipartFile emptyFile = new MockMultipartFile("file", "empty.txt", "text/plain", new byte[0]);
 
-        authenticatedWebTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
+        webTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
                         .queryParam("parentDirId", rootDirectory.getId())
                         .build())
                 .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -165,7 +169,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
         MockMultipartFile file = new MockMultipartFile("file", "test.txt", "text/plain", "Hello, World!".getBytes());
         Long nonExistentDirId = 9999L;
 
-        authenticatedWebTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
+        webTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
                         .queryParam("parentDirId", nonExistentDirId)
                         .build())
                 .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -180,20 +184,26 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
     void shouldReturnFileNotFoundExceptionWhenDownloadingNonExistentFile() throws Exception {
         UUID nonExistentBlobRef = UUID.randomUUID();
 
-        authenticatedWebTestClient.get().uri("/v1/files/{blobRef}", nonExistentBlobRef)
+        webTestClient.get().uri("/v1/files/{blobRef}", nonExistentBlobRef)
                 .exchange()
                 .expectStatus().isNotFound()
                 .expectBody()
                 .jsonPath("$.error").isEqualTo("File Not Found");
     }
 
+
     @Test
     void shouldReturnUnauthorizedFileAccessExceptionWhenDownloadingOthersFile() throws Exception {
         // Create a file with another user
         String otherUid = "otherUser_" + System.currentTimeMillis();
         String otherEmail = "other_" + System.currentTimeMillis() + "@example.com";
-        registerAndLoginUser(otherUid, otherEmail, "Other", "User");
-        WebTestClient otherUserClient = getAuthenticatedWebTestClient(otherUid, otherEmail);
+
+        var token = registerAndLoginUser(otherUid, otherEmail, "Other", "User");
+
+        WebTestClient otherUserClient = this.cleanWebTestClient.mutate()
+                .baseUrl("http://localhost:" + port + "/drive")
+                        .defaultCookie("jwt_token", token)
+                        .build();
 
         MockMultipartFile otherUserFile = new MockMultipartFile("file", "other_file.txt", "text/plain", "Content from other user.".getBytes());
         APIFile uploadedFile = otherUserClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
@@ -207,7 +217,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
                 .returnResult().getResponseBody();
 
         // Try to download the other user's file with the current authenticated user
-        authenticatedWebTestClient.get().uri("/v1/files/{blobRef}", uploadedFile.blobRef())
+        webTestClient.get().uri("/v1/files/{blobRef}", uploadedFile.blobRef())
                 .exchange()
                 .expectStatus().isForbidden()
                 .expectBody()
@@ -219,7 +229,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
         Long nonExistentFileId = 9999L;
         UpdateFileRequest updateRequest = new UpdateFileRequest("new_name.txt", rootDirectory.getId());
 
-        authenticatedWebTestClient.put().uri("/v1/files/{fileId}", nonExistentFileId)
+        webTestClient.put().uri("/v1/files/{fileId}", nonExistentFileId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updateRequest)
                 .exchange()
@@ -231,7 +241,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
     @Test
     void shouldReturnDirectoryNotFoundExceptionWhenUpdatingFileWithNonExistentParentDirectory() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "update_parent.txt", "text/plain", "Content.".getBytes());
-        APIFile uploadedFile = authenticatedWebTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
+        APIFile uploadedFile = webTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
                         .queryParam("parentDirId", rootDirectory.getId())
                         .build())
                 .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -244,7 +254,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
         Long nonExistentDirId = 9999L;
         UpdateFileRequest updateRequest = new UpdateFileRequest("update_parent.txt", nonExistentDirId);
 
-        authenticatedWebTestClient.put().uri("/v1/files/{fileId}", uploadedFile.id())
+        webTestClient.put().uri("/v1/files/{fileId}", uploadedFile.id())
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updateRequest)
                 .exchange()
@@ -257,7 +267,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
     void shouldReturnDirectoryNotFoundExceptionWhenGettingFilesUnderNonExistentDirectory() throws Exception {
         Long nonExistentDirId = 9999L;
 
-        authenticatedWebTestClient.get().uri(uriBuilder -> uriBuilder.path("/v1/files")
+        webTestClient.get().uri(uriBuilder -> uriBuilder.path("/v1/files")
                         .queryParam("parentDirId", nonExistentDirId)
                         .build())
                 .exchange()

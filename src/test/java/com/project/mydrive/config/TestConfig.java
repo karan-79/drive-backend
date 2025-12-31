@@ -1,13 +1,11 @@
 package com.project.mydrive.config;
 
-import com.google.firebase.auth.FirebaseAuth;
 import com.project.mydrive.external.document.DocumentClient;
 import com.project.mydrive.external.document.S3DocumentClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.localstack.LocalStackContainer;
@@ -24,20 +22,12 @@ import javax.sql.DataSource;
 import java.net.URI;
 import java.time.Duration;
 
-import static org.mockito.Mockito.mock;
-
 @TestConfiguration
 public class TestConfig {
 
-    // TODO perhaps not the right way haha, fix later (never)
-    @Bean
-    public FirebaseAuth firebaseAuth() {
-        return mock(FirebaseAuth.class);
-    }
-
     @Bean
     public DataSource getDs(Environment environment) {
-        var container = new PostgreSQLContainer<>("postgres:latest")
+        var container = new PostgreSQLContainer<>("postgres:17-alpine")
                 .withDatabaseName("testdb")
                 .withUsername("sa")
                 .withStartupTimeout(Duration.ofSeconds(30))

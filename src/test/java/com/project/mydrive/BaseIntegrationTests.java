@@ -2,6 +2,7 @@ package com.project.mydrive;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import com.project.mydrive.api.v1.model.APIUser;
 import com.project.mydrive.api.v1.model.FirebaseAuthRequest;
@@ -9,6 +10,7 @@ import com.project.mydrive.config.TestConfig;
 import com.project.mydrive.core.repository.DirectoryRepository;
 import com.project.mydrive.core.repository.FileRepository;
 import com.project.mydrive.core.repository.UserRepository;
+import com.project.mydrive.core.service.UserService;
 import com.project.mydrive.external.document.DocumentClient;
 import com.project.mydrive.utils.JwtUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,8 +20,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Map;
 
@@ -38,6 +40,9 @@ public class BaseIntegrationTests {
     protected UserRepository userRepository;
 
     @Autowired
+    protected UserService userService;
+
+    @Autowired
     protected DirectoryRepository directoryRepository;
 
     @Autowired
@@ -49,11 +54,14 @@ public class BaseIntegrationTests {
     @Autowired
     protected ObjectMapper objectMapper;
 
-    @Autowired
+    @MockitoBean
     protected FirebaseAuth firebaseAuth;
 
     @Autowired
     protected JwtUtils jwtUtils;
+
+    @Autowired
+    protected WebTestClient cleanWebTestClient;
 
     @Autowired
     protected DocumentClient documentClient;
@@ -91,19 +99,26 @@ public class BaseIntegrationTests {
                 .build();
     }
 
-    protected APIUser registerAndLoginUser(String uid, String email, String firstName, String lastName) throws Exception {
+    protected String registerAndLoginUser(String uid, String email, String firstName, String lastName) throws Exception {
         FirebaseToken mockToken = mockFirebaseToken(uid, email);
         when(firebaseAuth.verifyIdToken(mockToken.getUid())).thenReturn(mockToken);
 
         FirebaseAuthRequest authRequest = new FirebaseAuthRequest(mockToken.getUid(), firstName, lastName);
 
-        return webTestClient.post().uri("/v1/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(authRequest)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(APIUser.class)
-                .returnResult().getResponseBody();
+        userService.createUser(authRequest);
+        return userService.processLogin(mockToken.getUid());
     }
 
+    protected void createTestUser(String uid, String email, String firstName, String lastName) {
+        FirebaseToken mockToken = mockFirebaseToken(uid, email);
+        try {
+            when(firebaseAuth.verifyIdToken(mockToken.getUid())).thenReturn(mockToken);
+        } catch (FirebaseAuthException e) {
+            throw new RuntimeException(e);
+        }
+
+        FirebaseAuthRequest authRequest = new FirebaseAuthRequest(mockToken.getUid(), firstName, lastName);
+
+        userService.createUser(authRequest);
+    }
 }
