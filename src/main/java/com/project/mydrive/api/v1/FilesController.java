@@ -32,7 +32,7 @@ public class FilesController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "parentDirId", required = false) Long parentDirId
     ) throws IOException {
-        return fileService.save(file, parentDirId, user.getId());
+        return fileService.save(file, parentDirId, user);
     }
 
     @PutMapping("/{fileId}")
@@ -41,7 +41,20 @@ public class FilesController {
             @PathVariable("fileId") Long fileId,
             @RequestBody UpdateFileRequest fileRequest
     ) {
-        return fileService.update(fileId, fileRequest, user.getId());
+        return fileService.update(fileId, fileRequest, user);
+    }
+
+    @GetMapping("/{fileId}/thumbnail")
+    public ResponseEntity<Resource> loadThumbnail(
+            @AuthenticationPrincipal User user,
+            @PathVariable("fileId") Long fileId
+    ) {
+        var file = fileService.loadThumbnail(fileId, user);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.filename() + "\"")
+                .contentType(MediaType.parseMediaType(file.mimeType()))
+                .body(file.resource());
     }
 
     @GetMapping
@@ -49,15 +62,16 @@ public class FilesController {
             @AuthenticationPrincipal User user,
             @RequestParam(value = "parentDirId", required = false) Long parentDirId
     ) {
-        return fileService.getFilesUnder(parentDirId, user.getId());
+        return fileService.getFilesUnder(parentDirId, user);
     }
 
+    // TODO: I think you should take in just file id and resolve blobRef internally?? Don't know need to think more.
     @GetMapping("/{blobRef}")
     public ResponseEntity<Resource> downloadFile(
             @AuthenticationPrincipal User user,
             @PathVariable("blobRef") UUID blobRef
     ) {
-        var fileResource = fileService.downloadFile(blobRef, user.getId());
+        var fileResource = fileService.downloadFile(blobRef, user);
 
         String contentType = fileResource.mimeType();
         if (contentType == null || contentType.isBlank()) {

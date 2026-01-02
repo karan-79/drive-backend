@@ -23,6 +23,13 @@ public class File {
     @Column(name = "BLOB_REFERENCE_ID")
     UUID blobReferenceId;
 
+    @Column(name = "THUMBNAIL_ID")
+    UUID thumbnailRef;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "FILE_TYPE")
+    FileType fileType;
+
     boolean isStarred = false;
 
     @Column(name = "IS_DELETED")

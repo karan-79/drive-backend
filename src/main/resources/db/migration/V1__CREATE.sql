@@ -27,6 +27,8 @@ CREATE TABLE FILES
     ID                SERIAL PRIMARY KEY,
     NAME              VARCHAR(255)               NOT NULL,
     BLOB_REFERENCE_ID UUID                       NOT NULL,
+    THUMBNAIL_ID      UUID,
+    FILE_TYPE         VARCHAR(100)               NOT NULL,
     IS_STARRED        BOOLEAN   DEFAULT FALSE,
     IS_DELETED        BOOLEAN   DEFAULT FALSE,
     OWNER_ID          UUID REFERENCES USERS (ID) NOT NULL,

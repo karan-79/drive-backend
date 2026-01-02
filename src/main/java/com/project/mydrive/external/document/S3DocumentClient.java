@@ -48,6 +48,7 @@ public class S3DocumentClient implements DocumentClient {
     }
 
     private static String getKey(UUID docId) {
+        // TODO need to nest docs under the user's id
         return projectKey + "/" + docId.toString();
     }
 
