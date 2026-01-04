@@ -29,7 +29,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(ssn -> ssn.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(r -> r
-                        .requestMatchers("/v1/auth/login", "/v1/auth/register" , "/v1/auth/me")
+                        .requestMatchers("/v1/auth/login", "/v1/auth/register" , "/v1/auth/me", "/actuator/prometheus", "/actuator/prometheus/*")
                         .permitAll()
                         .anyRequest()
                         .authenticated()
