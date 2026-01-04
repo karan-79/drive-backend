@@ -19,10 +19,12 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -78,7 +80,13 @@ public class FileService {
 
         var savedFile = fileRepository.save(fileToSave);
 
-        thumbnailGenerationService.generateThumbnailAsync(savedFile.getId(), file);
+        try {
+            var is = new ByteArrayInputStream(file.getBytes());
+            thumbnailGenerationService.generateThumbnailAsync(savedFile, is, documentContentType);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to generate thumbnail for file " + savedFile.getId(), e);
+        }
+
 
         return toAPIFile(savedFile);
     }
@@ -93,7 +101,9 @@ public class FileService {
 
     public FileResource loadThumbnail(Long fileId, User user) {
         var file = fileRepository.getFileByOwnerAndIdAndIsDeletedIsFalse(user, fileId).orElseThrow(fileNotFoundException(fileId));
-
+        if(Objects.isNull(file.getThumbnailRef())) {
+            throw new FileNotFoundException("Thumbnail do not exist");
+        }
         Document downloadedDocument;
         try {
             downloadedDocument = documentClient.downloadDocument(file.getThumbnailRef());
@@ -105,18 +115,14 @@ public class FileService {
         return new FileResource(file.getName(), ThumbnailGenerator.THUMBNAIL_MIME_TYPE, new ByteArrayResource(downloadedDocument.getContent()));
     }
 
-    public FileResource downloadFile(UUID blobRef, User user) {
-        var file = fileRepository.getFileByBlobReferenceId(blobRef).orElseThrow(fileNotFoundException("File with blob reference ID " + blobRef + " not found."));
-
-        if (!file.getOwner().getId().equals(user.getId())) {
-            throw new UnauthorizedFileAccessException("File does not belong to user");
-        }
+    public FileResource downloadFile(Long fileId, User user) {
+        var file = fileRepository.getFileByOwnerAndIdAndIsDeletedIsFalse(user, fileId).orElseThrow(fileNotFoundException(fileId));
 
         Document downloadedDocument;
         try {
-            downloadedDocument = documentClient.downloadDocument(blobRef);
+            downloadedDocument = documentClient.downloadDocument(file.getBlobReferenceId());
         } catch (DocmentRetrievalException e) {
-            throw new FileDownloadException("Failed to download file with blob reference ID " + blobRef + ": " + e.getMessage(), e);
+            throw new FileDownloadException("Failed to download file with blob reference ID " + file.getBlobReferenceId() + ": " + e.getMessage(), e);
         }
 
         return new FileResource(file.getName(), downloadedDocument.getContentType(), new ByteArrayResource(downloadedDocument.getContent()));
@@ -198,5 +204,9 @@ public class FileService {
         }
 
         return dir.getFiles().stream().map(this::toAPIFile).toList();
+    }
+
+    public File getFile(Long fileId, User user) {
+        return fileRepository.getFileByOwnerAndIdAndIsDeletedIsFalse(user, fileId).orElseThrow(fileNotFoundException(fileId));
     }
 }

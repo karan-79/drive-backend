@@ -5,20 +5,28 @@ import com.project.mydrive.api.v1.model.APIFile;
 import com.project.mydrive.api.v1.model.UpdateFileRequest;
 import com.project.mydrive.core.domain.Directory;
 import com.project.mydrive.core.domain.User;
+import org.assertj.core.internal.Bytes;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserters;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +48,7 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
         String lastName = "Test";
 
         // if present then test user is already logged in.
-        if(userRepository.findByuId(uid).isPresent()) return;
+        if (userRepository.findByuId(uid).isPresent()) return;
 
         var token = registerAndLoginUser(uid, email, firstName, lastName);
 
@@ -86,12 +94,101 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
                 .expectBody(APIFile.class)
                 .returnResult().getResponseBody();
 
-        webTestClient.get().uri("/v1/files/{blobRef}", uploadedFile.blobRef())
+        Assertions.assertNotNull(uploadedFile);
+
+        webTestClient.get().uri("/v1/files/{fileId}/download", uploadedFile.id())
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.TEXT_PLAIN)
+                .expectHeader().cacheControl(CacheControl.maxAge(Duration.ofDays(20)).cachePrivate().immutable())
+                .expectHeader().contentDisposition(ContentDisposition.attachment().filename(uploadedFile.name()).build())
                 .expectBody(String.class)
                 .isEqualTo("Downloadable content.");
+    }
+
+
+    @Test
+    void shouldPreview() {
+        // Upload file
+        byte[] bytes = createImage("jpeg");
+        MockMultipartFile file = new MockMultipartFile("file", "preview_test.jpeg", "image/jpeg", bytes);
+
+        APIFile uploadedFile = webTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
+                        .queryParam("parentDirId", rootDirectory.getId())
+                        .build())
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(BodyInserters.fromMultipartData(toMultipartData(file)))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(APIFile.class)
+                .returnResult().getResponseBody();
+
+        Assertions.assertNotNull(uploadedFile);
+
+        webTestClient.get().uri("/v1/files/{fileId}/preview", uploadedFile.id())
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.IMAGE_JPEG_VALUE)
+                .expectHeader().contentDisposition(ContentDisposition.inline().filename(uploadedFile.name()).build())
+                .expectHeader().cacheControl(CacheControl.maxAge(Duration.ofDays(20)).cachePrivate().immutable())
+                .expectBody(byte[].class)
+                .isEqualTo(bytes);
+    }
+
+    @Test void  testThumbnailGenerates() throws InterruptedException {
+        byte[] bytes = createImage("jpeg");
+        MockMultipartFile file = new MockMultipartFile("file", "preview_test.jpeg", "image/jpeg", bytes);
+
+        var uploadedFile = webTestClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
+                        .queryParam("parentDirId", rootDirectory.getId())
+                        .build())
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(BodyInserters.fromMultipartData(toMultipartData(file)))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(APIFile.class)
+                .value(apiFile -> {
+                    assertThat(apiFile.thumbnailUrl()).isNull(); //as it won't be returned in first call
+                }).returnResult().getResponseBody();
+
+        Assertions.assertNotNull(uploadedFile);
+        Awaitility.await().atMost(Duration.ofSeconds(2)).untilAsserted(() -> {
+            webTestClient.get().uri("/v1/files/{fileId}/thumbnail", uploadedFile.id())
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectHeader().contentDisposition(ContentDisposition.inline().filename(uploadedFile.name()).build())
+                    .expectHeader().cacheControl(CacheControl.maxAge(Duration.ofDays(20)).cachePrivate().immutable())
+                    .expectHeader().contentType(MediaType.IMAGE_PNG)
+                    .expectBody(byte[].class)
+                    .value(body -> {
+                        assertThat(body.length).isLessThan(bytes.length);
+                    });
+        });
+    }
+
+    @Test
+    void fileLoadingEndpointThrows_IllegalArgument_when_invalidAction() {
+        var invalidAction = "destroy";
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "Argument is invalid");
+        errorResponse.put("message", "Action not supported for string: " + invalidAction);
+
+        webTestClient.get().uri("/v1/files/{fileId}/{action}", 213, invalidAction)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody(Map.class)
+                .isEqualTo(errorResponse);
+    }
+
+    private byte[] createImage(String ext) {
+        try {
+            var image = new BufferedImage(500, 500, BufferedImage.TYPE_INT_RGB);
+            var os = new ByteArrayOutputStream();
+            ImageIO.write(image, ext, os);
+            return os.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
@@ -182,9 +279,8 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
 
     @Test
     void shouldReturnFileNotFoundExceptionWhenDownloadingNonExistentFile() throws Exception {
-        UUID nonExistentBlobRef = UUID.randomUUID();
 
-        webTestClient.get().uri("/v1/files/{blobRef}", nonExistentBlobRef)
+        webTestClient.get().uri("/v1/files/{fileId}/download", 999969)
                 .exchange()
                 .expectStatus().isNotFound()
                 .expectBody()
@@ -202,8 +298,8 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
 
         WebTestClient otherUserClient = this.cleanWebTestClient.mutate()
                 .baseUrl("http://localhost:" + port + "/drive")
-                        .defaultCookie("jwt_token", token)
-                        .build();
+                .defaultCookie("jwt_token", token)
+                .build();
 
         MockMultipartFile otherUserFile = new MockMultipartFile("file", "other_file.txt", "text/plain", "Content from other user.".getBytes());
         APIFile uploadedFile = otherUserClient.post().uri(uriBuilder -> uriBuilder.path("/v1/files")
@@ -217,11 +313,11 @@ public class FilesControllerIntegrationTest extends BaseIntegrationTests {
                 .returnResult().getResponseBody();
 
         // Try to download the other user's file with the current authenticated user
-        webTestClient.get().uri("/v1/files/{blobRef}", uploadedFile.blobRef())
+        webTestClient.get().uri("/v1/files/{fileId}/download", uploadedFile.id())
                 .exchange()
-                .expectStatus().isForbidden()
+                .expectStatus().isNotFound()
                 .expectBody()
-                .jsonPath("$.error").isEqualTo("Unauthorized File Access");
+                .jsonPath("$.error").isEqualTo("File Not Found");
     }
 
     @Test

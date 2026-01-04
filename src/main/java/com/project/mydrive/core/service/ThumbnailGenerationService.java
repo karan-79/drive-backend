@@ -1,5 +1,6 @@
 package com.project.mydrive.core.service;
 
+import com.project.mydrive.core.domain.File;
 import com.project.mydrive.core.repository.FileRepository;
 import com.project.mydrive.core.service.thumbnail.ThumbnailGeneratorFactory;
 import com.project.mydrive.external.document.DocumentClient;
@@ -20,22 +21,18 @@ public class ThumbnailGenerationService {
     private final ThumbnailGeneratorFactory thumbnailGeneratorFactory;
 
     @Async
-    public void generateThumbnailAsync(Long fileId, MultipartFile multipartFile) {
-        var file = fileRepository.findById(fileId).orElseThrow();
-
+    public void generateThumbnailAsync(File file, InputStream fileStream, String contentType) {
         if (!file.getFileType().getCapability().preview()) return; // TODO logs
 
         var generator = thumbnailGeneratorFactory.getInstance(file.getFileType());
 
-        try (InputStream is = multipartFile.getInputStream()) {
-            var thumbnail = generator.generate(is);
+        try {
+            var thumbnail = generator.generate(fileStream);
 
-            var uploadedThumb = documentClient.uploadDocument(thumbnail, multipartFile.getContentType());
+            var uploadedThumb = documentClient.uploadDocument(thumbnail, contentType);
 
             file.setThumbnailRef(uploadedThumb.getId());
             fileRepository.save(file);
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to generate thumbnail for file " + file.getId(), e);
         } catch (DocumentStorageException e) {
             // TODO
             throw new RuntimeException(e);

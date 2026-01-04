@@ -1,6 +1,7 @@
 package com.project.mydrive.core.service.thumbnail;
 
 import net.coobird.thumbnailator.Thumbnails;
+import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

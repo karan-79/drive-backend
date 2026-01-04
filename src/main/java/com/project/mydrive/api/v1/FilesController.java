@@ -1,12 +1,13 @@
 package com.project.mydrive.api.v1;
 
 import com.project.mydrive.api.v1.model.APIFile;
+import com.project.mydrive.api.v1.model.FileResourceAction;
 import com.project.mydrive.api.v1.model.UpdateFileRequest;
 import com.project.mydrive.core.domain.User;
-import com.project.mydrive.core.service.CleanUpService;
 import com.project.mydrive.core.service.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,6 +55,7 @@ public class FilesController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.filename() + "\"")
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(20)).cachePrivate().immutable())
                 .contentType(MediaType.parseMediaType(file.mimeType()))
                 .body(file.resource());
     }
@@ -66,23 +69,28 @@ public class FilesController {
     }
 
     // TODO: I think you should take in just file id and resolve blobRef internally?? Don't know need to think more.
-    @GetMapping("/{blobRef}")
+    @GetMapping("/{fileId}/{action}")
     public ResponseEntity<Resource> downloadFile(
             @AuthenticationPrincipal User user,
-            @PathVariable("blobRef") UUID blobRef
+            @PathVariable("fileId") Long fileId,
+            @PathVariable("action") String action
     ) {
-        var fileResource = fileService.downloadFile(blobRef, user);
-
+        var resourceAction = FileResourceAction.fromString(action);
+        var fileResource = fileService.downloadFile(fileId, user);
+        var contentDisposition = resourceAction.getContentDisposition();
         String contentType = fileResource.mimeType();
+
         if (contentType == null || contentType.isBlank()) {
             contentType = "application/octet-stream";
+            contentDisposition = FileResourceAction.DOWNLOAD.getContentDisposition();
         }
 
         return ResponseEntity.ok()
                 .header(
                         HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + fileResource.filename() + "\""
+                        contentDisposition + "; filename=\"" + fileResource.filename() + "\""
                 )
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(20)).cachePrivate().immutable())
                 .contentType(MediaType.parseMediaType(contentType))
                 .body(fileResource.resource());
     }
