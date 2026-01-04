@@ -40,6 +40,14 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalArguments(IllegalArgumentException ex) {
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "Argument is invalid");
+        errorResponse.put("message", ex.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(FirebaseTokenException.class)
     public ResponseEntity<Map<String, String>> handleFirebaseTokenException(FirebaseTokenException ex) {
         Map<String, String> errorResponse = new HashMap<>();

@@ -36,6 +36,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.boot:spring-boot-starter-webflux")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	implementation("org.springframework.boot:spring-boot-starter-security:3.4.5")
 
 
 	// https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-api
@@ -46,9 +47,12 @@ dependencies {
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 	implementation("org.springframework.boot:spring-boot-docker-compose")
 	implementation("org.flywaydb:flyway-core")
+	implementation("org.apache.tika:tika-core:3.2.3")
+	implementation("net.coobird:thumbnailator:0.4.21")
+	implementation("org.apache.pdfbox:pdfbox:3.0.6")
+
 	runtimeOnly("org.flywaydb:flyway-database-postgresql:11.8.0")
 	implementation("org.postgresql:postgresql:42.7.5")
-	implementation("org.springframework.boot:spring-boot-starter-security:3.4.5")
 	implementation("com.google.firebase:firebase-admin:9.5.0")
 
 	compileOnly("org.projectlombok:lombok")

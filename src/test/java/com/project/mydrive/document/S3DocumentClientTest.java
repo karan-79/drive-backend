@@ -1,6 +1,8 @@
 package com.project.mydrive.document;
 
 import com.project.mydrive.BaseIntegrationTests;
+import com.project.mydrive.external.document.excpetions.DocmentRetrievalException;
+import com.project.mydrive.external.document.excpetions.DocumentStorageException;
 import com.project.mydrive.external.document.model.Document;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +14,7 @@ public class S3DocumentClientTest extends BaseIntegrationTests {
 
 
     @Test
-    void shouldUploadAndDownloadDocument() {
+    void shouldUploadAndDownloadDocument() throws DocumentStorageException, DocmentRetrievalException {
         // Given
         byte[] content = "Hello, S3!".getBytes();
         String contentType = "text/plain";
