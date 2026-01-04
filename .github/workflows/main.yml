@@ -83,6 +83,7 @@ jobs:
           
           docker network connect garage-net drive-clone-app
           docker network connect db-net drive-clone-app
+          docker network connect monitoring-network drive-clone-app
           
           docker start drive-clone-app
           
